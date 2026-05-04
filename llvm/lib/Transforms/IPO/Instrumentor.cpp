@@ -154,6 +154,9 @@ private:
   /// The instrumentor configuration.
   InstrumentationConfig &IConf;
 
+  /// The function regex filter, if any.
+  Regex ParsedFunctionRegex;
+
   /// The underlying module.
   Module &M;
 
@@ -171,7 +174,7 @@ bool InstrumentorImpl::shouldInstrumentTarget() {
   bool RegexMatches = true;
   const auto TargetRegexStr = IConf.TargetRegex->getString();
   if (!TargetRegexStr.empty()) {
-    llvm::Regex TargetRegex(TargetRegexStr);
+    Regex TargetRegex(TargetRegexStr);
     std::string ErrMsg;
     if (!TargetRegex.isValid(ErrMsg)) {
       IIRB.Ctx.diagnose(DiagnosticInfoInstrumentation(
@@ -190,7 +193,11 @@ bool InstrumentorImpl::shouldInstrumentTarget() {
 bool InstrumentorImpl::shouldInstrumentFunction(Function &Fn) {
   if (Fn.isDeclaration())
     return false;
-  return !Fn.getName().starts_with(IConf.getRTName()) ||
+  bool RegexMatches = true;
+  const auto FunctionRegexStr = IConf.FunctionRegex->getString();
+  if (!FunctionRegexStr.empty())
+    RegexMatches = ParsedFunctionRegex.match(Fn.getName());
+  return (RegexMatches && !Fn.getName().starts_with(IConf.getRTName())) ||
          Fn.hasFnAttribute("instrument");
 }
 
@@ -273,6 +280,17 @@ bool InstrumentorImpl::instrument() {
   bool Changed = false;
   if (!shouldInstrumentTarget())
     return Changed;
+
+  const auto FunctionRegexStr = IConf.FunctionRegex->getString();
+  if (!FunctionRegexStr.empty()) {
+    ParsedFunctionRegex = Regex(FunctionRegexStr);
+    std::string ErrMsg;
+    if (!ParsedFunctionRegex.isValid(ErrMsg)) {
+      IIRB.Ctx.diagnose(DiagnosticInfoInstrumentation(
+          Twine("failed to parse target regex: ") + ErrMsg, DS_Warning));
+      return false;
+    }
+  }
 
   for (auto &It : IConf.IChoices[InstrumentationLocation::INSTRUCTION_PRE])
     if (It.second->Enabled)

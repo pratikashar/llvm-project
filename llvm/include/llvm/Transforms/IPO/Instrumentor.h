@@ -355,7 +355,12 @@ struct InstrumentationConfig {
     TargetRegex = BaseConfigurationOption::getStringOption(
         *this, "target_regex",
         "Regular expression to be matched against the module target. "
-        "Only targets that match this regex will be instrumented",
+        "Only targets that match this regex will be instrumented.",
+        "");
+    FunctionRegex = BaseConfigurationOption::getStringOption(
+        *this, "function_regex",
+        "Regular expression to be matched against a function name. "
+        "Only functions that match this regex will be instrumented.",
         "");
     HostEnabled = BaseConfigurationOption::getBoolOption(
         *this, "host_enabled", "Instrument non-GPU targets", true);
@@ -419,6 +424,7 @@ struct InstrumentationConfig {
   BaseConfigurationOption *RuntimeStubsFile;
   BaseConfigurationOption *DemangleFunctionNames;
   BaseConfigurationOption *TargetRegex;
+  BaseConfigurationOption *FunctionRegex;
   BaseConfigurationOption *HostEnabled;
   BaseConfigurationOption *GPUEnabled;
 
