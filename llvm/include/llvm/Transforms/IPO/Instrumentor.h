@@ -343,7 +343,16 @@ struct InstrumentationConfig {
   virtual ~InstrumentationConfig() {}
 
   /// Construct an instrumentation configuration with the base options.
-  InstrumentationConfig() : SS(StringAllocator) {
+  InstrumentationConfig() : SS(StringAllocator) {}
+
+  /// Initialize the config to a clean base state without loosing cached values
+  /// that can be reused across configurations.
+  virtual void init(InstrumentorIRBuilderTy &IIRB) {
+    // Clear previous configurations but not the caches.
+    BaseConfigurationOptions.clear();
+    for (auto &Map : IChoices)
+      Map.clear();
+
     RuntimePrefix = BaseConfigurationOption::getStringOption(
         *this, "runtime_prefix", "The runtime API prefix.", "__instrumentor_");
     RuntimeStubsFile = BaseConfigurationOption::getStringOption(
@@ -366,6 +375,7 @@ struct InstrumentationConfig {
         *this, "host_enabled", "Instrument non-GPU targets", true);
     GPUEnabled = BaseConfigurationOption::getBoolOption(
         *this, "gpu_enabled", "Instrument GPU targets", true);
+    populate(IIRB);
   }
 
   /// Populate the instrumentation opportunities.
